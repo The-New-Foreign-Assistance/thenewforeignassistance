@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.repository == 'danielhandel17/thenewforeignassistance'
+    if: github.repository == 'The-New-Foreign-Assistance/thenewforeignassistance'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
