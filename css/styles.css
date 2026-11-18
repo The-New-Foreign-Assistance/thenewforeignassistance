@@ -5,3 +5,6 @@
 .header-ctas a{white-space:nowrap}
 @media (min-width:960px){.header-gt{display:inline-flex}}
 @media (min-width:860px) and (max-width:1279.98px){.header-ctas a,.header-gt{font-size:14px;letter-spacing:.12em;padding:6px 10px}}
+/* The Growth Test buttons in navy (TNFA's ink) with white text, beside the amber Tracker button */
+a.header-gt,a.mobile-gt{background-color:#1c2e4a;border-color:#1c2e4a;color:#fff}
+a.header-gt:hover,a.header-gt:focus-visible,a.mobile-gt:hover,a.mobile-gt:focus-visible{background-color:#b8682a;border-color:#b8682a;color:#fff}
