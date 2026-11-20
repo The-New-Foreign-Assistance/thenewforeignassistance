@@ -1,17 +1,29 @@
 /*
- * Google Analytics, with the reader's consent.
+ * Google Analytics, asking first where the law requires it.
  *
- * Nothing is loaded from Google and no cookie is set until the reader presses Accept on the banner. The answer is kept in
- * this browser for a year; "Analytics settings" in the footer asks again. A browser that sends Global Privacy Control or
- * Do Not Track is neither asked nor measured. Only the published site is measured (thenewforeignassistance.org and www),
- * so the staging copy and local previews send nothing. Add ?consent=preview to any address to see the banner without
- * storing an answer.
+ * Since 20 November 2026 the consent banner is shown only where the law requires asking. In a browser on a European time
+ * zone, or one whose zone cannot be read, nothing is loaded from Google and no cookie is set until the reader presses Accept
+ * on the banner, and "Analytics settings" in the footer asks again. Everywhere else the site measures by default: the footer
+ * says so, and its "Turn it off" button stops it in one click ("Turn it back on" undoes that). An answer is kept in this
+ * browser for a year. A browser that sends Global Privacy Control or Do Not Track is neither asked nor measured, anywhere.
+ * Only the published site is measured (thenewforeignassistance.org and www), so the staging copy and local previews send
+ * nothing. Add ?consent=preview to any address to see the banner without storing an answer.
  */
 (function () {
   var IDS = ['G-DY00G9KT05', 'G-GPQHNR6C2C'];
   var HOSTS = ['thenewforeignassistance.org', 'www.thenewforeignassistance.org'];
   var KEY = 'tnfa-analytics-consent';
   var DAYS = 365;
+  /*
+   * Where a reader is asked before anything is measured (20 November 2026; the same list as the Growth Test's). The site has
+   * no server to look at an address, so the browser's time zone stands in for the place. An entry ending in "/" is a prefix:
+   * everything under Europe/, which takes in the United Kingdom, Switzerland and the EEA's neighbors and so errs toward
+   * asking. The rest are zones of EEA states filed under another ocean or continent: Iceland, the Canaries, Madeira, the
+   * Azores, the Faroes and Svalbard; Cyprus; Spain's cities in North Africa; and France's overseas departments.
+   */
+  var ZONES = ['Europe/', 'Atlantic/Reykjavik', 'Atlantic/Canary', 'Atlantic/Madeira', 'Atlantic/Azores', 'Atlantic/Faroe',
+    'Arctic/Longyearbyen', 'Asia/Nicosia', 'Asia/Famagusta', 'Africa/Ceuta', 'America/Guadeloupe', 'America/Martinique',
+    'America/Marigot', 'America/Cayenne', 'Indian/Reunion', 'Indian/Mayotte'];
   var started = false;
 
   function param(name) {
@@ -26,13 +38,39 @@
       return isFinite(at) && Date.now() - at <= DAYS * 864e5 && Date.now() >= at ? o.v : null;
     } catch (e) { return null; }
   }
+  /* Keep the answer for a year ('granted' or 'denied'), or forget it (null) */
   function remember(v) {
-    try { localStorage.setItem(KEY, JSON.stringify({ v: v, at: new Date().toISOString() })); } catch (e) { /* asked again next page */ }
+    try {
+      if (v) localStorage.setItem(KEY, JSON.stringify({ v: v, at: new Date().toISOString() }));
+      else localStorage.removeItem(KEY);
+    } catch (e) { /* storage is unavailable: the answer holds for this page only */ }
   }
   function privacySignal() {
     return navigator.globalPrivacyControl === true || navigator.doNotTrack === '1' || window.doNotTrack === '1';
   }
+  /*
+   * Whether this browser is asked first: its time zone is on the list, or says nothing about where the reader is (missing,
+   * empty, UTC, GMT or under Etc/), which fails safe by asking. So does a browser that blocks storage, where a "Turn it off"
+   * could not be kept.
+   */
+  function asksFirst() {
+    var zone = '';
+    try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* unreadable: ask */ }
+    try { localStorage.getItem(KEY); } catch (e) { return true; }
+    if (typeof zone !== 'string' || !zone || /^(UTC|GMT|Etc\/)/i.test(zone)) return true;
+    zone = zone.toLowerCase();
+    for (var i = 0; i < ZONES.length; i++) {
+      var z = ZONES[i].toLowerCase();
+      if (z.charAt(z.length - 1) === '/' ? zone.indexOf(z) === 0 : zone === z) return true;
+    }
+    return false;
+  }
   var measured = HOSTS.indexOf(location.hostname) >= 0 && navigator.webdriver !== true && !privacySignal();
+  var asks = asksFirst();
+  /* Whether to measure with this answer: where the reader is asked first, only after Accept; elsewhere unless turned off */
+  function allowed(v) {
+    return measured && (asks ? v === 'granted' : v !== 'denied');
+  }
 
   function start() {
     if (started) return;
@@ -47,8 +85,13 @@
     script.src = 'https://www.googletagmanager.com/gtag/js?id=' + IDS[0];
     document.head.appendChild(script);
   }
-  function stop() {
-    for (var i = 0; i < IDS.length; i++) window['ga-disable-' + IDS[i]] = true; // Google's own switch: stops sending at once
+  /* The reader's answer, from the banner or the footer: kept, and acted on at once */
+  function choose(v) {
+    remember(v);
+    var on = allowed(v);
+    for (var i = 0; i < IDS.length; i++) window['ga-disable-' + IDS[i]] = !on; // Google's own switch: stops sending at once
+    if (on) start();
+    footerLine(v);
   }
 
   function banner(preview) {
@@ -88,9 +131,7 @@
       b.textContent = label;
       b.addEventListener('click', function () {
         bar.remove();
-        if (preview) return;
-        remember(v);
-        if (v === 'granted') { window['ga-disable-' + IDS[0]] = false; window['ga-disable-' + IDS[1]] = false; start(); } else stop();
+        if (!preview) choose(v);
       });
       return b;
     }
@@ -102,29 +143,64 @@
     document.body.appendChild(bar);
   }
 
-  /* "Analytics settings" in the footer's legal line, on the measured site only */
-  function settingsLink() {
-    var legal = document.querySelector('.footer-legal');
-    if (!legal || document.getElementById('analyticsSettings')) return;
+  /* The footer's legal line: the paragraph in the footer that carries the copyright sign, whatever its class */
+  function legalLine() {
+    var ps = document.querySelectorAll('footer p');
+    for (var i = 0; i < ps.length; i++) if (ps[i].textContent.indexOf('©') >= 0) return ps[i];
+    return document.querySelector('footer .footer-legal');
+  }
+  function linkButton(id, label) {
     var b = document.createElement('button');
     b.type = 'button';
-    b.id = 'analyticsSettings';
-    b.textContent = 'Analytics settings';
-    b.style.cssText = 'background:none;border:0;padding:0;margin-left:16px;font:inherit;color:inherit;text-decoration:underline;cursor:pointer';
+    b.id = id;
+    b.textContent = label;
+    b.style.cssText = 'background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer';
+    return b;
+  }
+  /*
+   * What the footer's legal line says about analytics, on the measured site only. Where the reader is asked first:
+   * "Analytics settings", which asks again. Elsewhere: that the site measures, with one click to turn it off, or that it
+   * is off, with one click back (the keyboard stays on the new button after a press).
+   */
+  function footerLine(v) {
+    var legal = legalLine();
+    if (!legal) return;
+    var old = document.getElementById('analyticsSettings') || document.getElementById('analyticsNote');
+    if (old) old.remove();
+    var b;
+    if (asks) {
+      b = linkButton('analyticsSettings', 'Analytics settings');
+      b.style.marginLeft = '16px';
+      b.addEventListener('click', function () {
+        remember(null);
+        banner(false);
+      });
+      legal.appendChild(b);
+      return;
+    }
+    var on = allowed(v);
+    var note = document.createElement('span');
+    note.id = 'analyticsNote';
+    note.style.cssText = 'display:block;margin-top:8px;font-size:15px';
+    note.appendChild(document.createTextNode(on ? 'This site uses Google Analytics to count visits and the pages read. '
+      : 'Analytics is off in this browser. '));
+    b = linkButton('analyticsSwitch', on ? 'Turn it off' : 'Turn it back on');
     b.addEventListener('click', function () {
-      try { localStorage.removeItem(KEY); } catch (e) { /* nothing stored */ }
-      banner(false);
+      choose(on ? 'denied' : null);
+      var next = document.getElementById('analyticsSwitch');
+      if (next) next.focus();
     });
-    legal.appendChild(b);
+    note.appendChild(b);
+    legal.appendChild(note);
   }
 
   function run() {
     if (param('consent') === 'preview') { banner(true); return; }
     if (!measured) return;
-    settingsLink();
     var v = stored();
-    if (v === 'granted') start();
-    else if (v === null) banner(false);
+    footerLine(v);
+    if (allowed(v)) start();
+    else if (asks && v === null) banner(false);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();
