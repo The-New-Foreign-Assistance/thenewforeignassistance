@@ -4,8 +4,8 @@
  * Since 20 November 2026 the consent banner is shown only where the law requires asking. In a browser on a European time
  * zone, or one whose zone cannot be read, nothing is loaded from Google and no cookie is set until the reader presses Accept
  * on the banner, and "Analytics settings" in the footer asks again. Everywhere else the site measures by default: the footer
- * says so, and its "Turn it off" button stops it in one click ("Turn it back on" undoes that). An answer is kept in this
- * browser for a year. A browser that sends Global Privacy Control or Do Not Track is neither asked nor measured, anywhere.
+ * says so, and its "Turn it off" button stops it in one click ("Turn it back on" undoes that). An Accept is kept in this
+ * browser for a year and then asked again; an "off" (Decline, or "Turn it off") never lapses. A browser that sends Global Privacy Control or Do Not Track is neither asked nor measured, anywhere.
  * Only the published site is measured (thenewforeignassistance.org and www), so the staging copy and local previews send
  * nothing. Add ?consent=preview to any address to see the banner without storing an answer.
  */
@@ -34,11 +34,12 @@
     try {
       var o = JSON.parse(localStorage.getItem(KEY) || 'null');
       if (!o || (o.v !== 'granted' && o.v !== 'denied')) return null;
+      if (o.v === 'denied') return 'denied'; // an "off" never lapses: it ends only when the reader turns it back on or accepts
       var at = Date.parse(o.at);
       return isFinite(at) && Date.now() - at <= DAYS * 864e5 && Date.now() >= at ? o.v : null;
     } catch (e) { return null; }
   }
-  /* Keep the answer for a year ('granted' or 'denied'), or forget it (null) */
+  /* Keep the answer ('granted' or 'denied'), or forget it (null) */
   function remember(v) {
     try {
       if (v) localStorage.setItem(KEY, JSON.stringify({ v: v, at: new Date().toISOString() }));
@@ -172,7 +173,7 @@
       b = linkButton('analyticsSettings', 'Analytics settings');
       b.style.marginLeft = '16px';
       b.addEventListener('click', function () {
-        remember(null);
+        if (stored() !== 'denied') remember(null); // an earlier Accept is forgotten at once; an "off" stands until Accept
         banner(false);
       });
       legal.appendChild(b);
