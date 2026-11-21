@@ -388,11 +388,11 @@
 .unga-banner__inner{justify-content:center;text-align:center}
 .unga-banner__title{font-size:1.0625rem;line-height:1.4}
 @media (min-width:860px){.unga-banner__title{font-size:1.1875rem}}
-/* The Growth Test button in the header (beside Tracker): from 960 px up; both buttons compact below 1280 px so they fit */
+/* The Growth Compass button in the header (beside Tracker): from 1100 px up (its longer name, since 20 November 2026, needs the room: from 960 px it ran into the menu, and on About and Press it ran off the page below 1074 px); both buttons compact below 1280 px so they fit */
 .header-gt{display:none;white-space:nowrap}
 .header-ctas a{white-space:nowrap}
-@media (min-width:960px){.header-gt{display:inline-flex}}
+@media (min-width:1100px){.header-gt{display:inline-flex}}
 @media (min-width:860px) and (max-width:1279.98px){.header-ctas a,.header-gt{font-size:14px;letter-spacing:.12em;padding:6px 10px}}
-/* The Growth Test buttons in navy (TNFA's ink) with white text, beside the amber Tracker button */
+/* The Growth Compass buttons in navy (TNFA's ink) with white text, beside the amber Tracker button */
 a.header-gt,a.mobile-gt{background-color:#1c2e4a;border-color:#1c2e4a;color:#fff}
 a.header-gt:hover,a.header-gt:focus-visible,a.mobile-gt:hover,a.mobile-gt:focus-visible{background-color:#b8682a;border-color:#b8682a;color:#fff}
