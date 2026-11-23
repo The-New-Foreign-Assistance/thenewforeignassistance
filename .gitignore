@@ -47,3 +47,7 @@
 !.github/
 !.github/workflows/
 !.github/workflows/**
+
+# Press releases (PDF)
+!press/
+!press/*.pdf
